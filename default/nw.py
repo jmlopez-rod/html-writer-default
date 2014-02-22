@@ -19,7 +19,7 @@ BLOCK = [
     'html', 'address', 'article', 'aside', 'blockquote', 'dir',
     'div', 'dl', 'fieldset', 'footer', 'form', 'h1', 'h2', 'h3',
     'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'main', 'menu',
-    'nav', 'ol', 'p', 'pre', 'section', 'table', 'ul', 'link',
+    'nav', 'p', 'pre', 'section', 'table', 'ol', 'ul', 'li', 'link',
     '#doctype', 'head', 'body',
 ]
 BLOCK.extend(RAWTEXT)
@@ -98,7 +98,9 @@ class DefaultNW(NodeWriter):
         else:
             self.wrap('</%s>' % node.name)
             if node.name in BLOCK:
-                self.wrap('\n')
+                if (self.writer.prev_str[-1] != '\n' or
+                        self.writer.buffer.rstrip().endswith('>')):
+                    self.wrap('\n')
 
 
 class DoctypeNW(NodeWriter):
