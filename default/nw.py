@@ -33,7 +33,10 @@ class TextNW(NodeWriter):
             self.wrap(node.data, raw=True)
             return
         text = re.sub(RE, ' ', node.data)
-        if text != ' ' or (node.index != 0 and node.prev.name not in BLOCK):
+        if text != ' ' or (node.index != 0 and
+                           node.prev.name not in BLOCK and
+                           node.next is not None and
+                           node.next.name not in BLOCK):
             self.wrap(text)
 
 
@@ -42,15 +45,15 @@ class DefaultNW(NodeWriter):
 
     def start(self, node):
         if node.name == 'pre':
-            self.writer.pre_node = True
+            self.writer.pre_node += 1
+            if 'pre' in BLOCK:
+                self.writer.endl(False)
         if self.writer.pre_node:
             raw = True
         else:
             raw = False
-        if node.name in BLOCK:
-            if (self.writer.prev_str[-1] != '\n' or
-                    self.writer.buffer.rstrip().endswith('>')):
-                self.wrap('\n', raw=raw)
+            if node.name in BLOCK:
+                self.writer.endl(False)
         if isinstance(node, core.ProcessingInstruction):
             self.wrap('<%s' % node.name, split=True)
             if '\n' in node.data:
@@ -89,18 +92,22 @@ class DefaultNW(NodeWriter):
 
     def end(self, node):
         if node.name == 'pre':
-            self.writer.pre_node = False
+            self.writer.pre_node -= 1
+        if self.writer.pre_node:
+            raw = True
+        else:
+            raw = False
         if node.child is None:
             if isinstance(node, core.ProcessingInstruction):
-                self.wrap('?>\n')
+                self.wrap('?>')
             elif isinstance(node, core.RawText):
-                self.wrap('</%s>\n' % node.name)
+                self.wrap('</%s>' % node.name)
+            if not raw:
+                self.writer.endl()
         else:
-            self.wrap('</%s>' % node.name)
-            if node.name in BLOCK:
-                if (self.writer.prev_str[-1] != '\n' or
-                        self.writer.buffer.rstrip().endswith('>')):
-                    self.wrap('\n')
+            self.wrap('</%s>' % node.name, raw=raw)
+            if not raw and node.name in BLOCK:
+                self.writer.endl(False)
 
 
 class DoctypeNW(NodeWriter):
@@ -113,7 +120,7 @@ class DoctypeNW(NodeWriter):
         self.wrap(re.sub(RE, ' ', node.data).strip())
 
     def end(self, node):
-        self.wrap('>\n')
+        self.wrap('>\n', raw=True)
 
 
 class CDataNW(NodeWriter):
@@ -138,9 +145,12 @@ class CommentNW(NodeWriter):
 
     def start(self, node):
         if node.prev is not None:
-            prev = node.prev
-            if prev.name == '#text' and prev.data.endswith('\n'):
-                self.wrap('\n')
+            if node.prev.name == '#text':
+                index = node.prev.data.rfind('\n')
+                if index != -1:
+                    line = node.prev.data[index+1:]
+                    if line.strip() == '':
+                        self.writer.endl(False)
         self.wrap('<!--', split=True)
 
     def data(self, node):
@@ -151,12 +161,11 @@ class CommentNW(NodeWriter):
         if node.next is not None:
             nnext = node.next
             if nnext.name == '#text' and nnext.data.startswith('\n'):
-                self.wrap('\n')
+                self.writer.endl()
 
 
 class DocumentNW(NodeWriter):
     """Finish document with a new line character. """
 
     def end(self, node):
-        if self.writer.prev_str[-1] != '\n':
-            self.wrap('\n')
+        self.writer.endl(False)
