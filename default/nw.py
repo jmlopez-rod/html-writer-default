@@ -59,7 +59,7 @@ class DefaultNW(NodeWriter):
                 self.write(' ')
             return
         att = ' '.join(['%s="%s"' % (k, v) for k, v in node.items()])
-        self.write('<%s' % node.name, split=True)
+        self.write('<%s' % node.name)
         if att != '':
             self.write(' %s' % att)
         if isinstance(node, core.Void):
