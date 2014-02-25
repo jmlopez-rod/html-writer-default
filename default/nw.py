@@ -20,7 +20,7 @@ BLOCK = [
     'div', 'dl', 'fieldset', 'footer', 'form', 'h1', 'h2', 'h3',
     'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'main', 'menu',
     'nav', 'p', 'pre', 'section', 'table', 'ol', 'ul', 'li', 'link',
-    '#doctype', 'head', 'body',
+    '#doctype', 'head', 'body', 'table',
 ]
 BLOCK.extend(RAWTEXT)
 
@@ -30,14 +30,14 @@ class TextNW(NodeWriter):
 
     def data(self, node):
         if self.writer.pre_node:
-            self.wrap(node.data, raw=True)
+            self.write(node.data)
             return
         text = re.sub(RE, ' ', node.data)
         if text != ' ' or (node.index != 0 and
                            node.prev.name not in BLOCK and
                            node.next is not None and
                            node.next.name not in BLOCK):
-            self.wrap(text)
+            self.write(text)
 
 
 class DefaultNW(NodeWriter):
@@ -46,37 +46,39 @@ class DefaultNW(NodeWriter):
     def start(self, node):
         if node.name == 'pre':
             self.writer.pre_node += 1
+            self.writer.enable_raw()
             if 'pre' in BLOCK:
                 self.writer.endl(False)
-        if self.writer.pre_node:
-            raw = True
-        else:
-            raw = False
-            if node.name in BLOCK:
-                self.writer.endl(False)
+        if not self.writer.pre_node and node.name in BLOCK:
+            self.writer.endl(False)
         if isinstance(node, core.ProcessingInstruction):
-            self.wrap('<%s' % node.name, split=True)
+            self.write('<%s' % node.name, split=True)
             if '\n' in node.data:
-                self.wrap('\n', raw=raw)
+                self.write('\n')
             else:
-                self.wrap(' ', raw=raw)
+                self.write(' ')
             return
         att = ' '.join(['%s="%s"' % (k, v) for k, v in node.items()])
-        self.wrap('<%s' % node.name, split=True, raw=raw)
+        self.write('<%s' % node.name, split=True)
         if att != '':
-            self.wrap(' %s' % att, raw=raw)
+            self.write(' %s' % att)
         if isinstance(node, core.Void):
-            self.wrap('/>', raw=raw)
+            self.write('/>')
         else:
-            self.wrap('>', raw=raw)
+            self.write('>')
 
     def data(self, node):
-        if (node.name in RAWTEXT or self.writer.pre_node or
+        if (node.name in RAWTEXT or
                 isinstance(node, core.ProcessingInstruction)):
-            self.wrap(node.data, raw=True)
+            enabled = self.writer.raw_enabled()
+            if not enabled:
+                self.writer.enable_raw()
+            self.write(node.data)
+            if not enabled:
+                self.writer.disable_raw()
         else:
             text = re.sub(RE, ' ', node.data)
-            self.wrap(text)
+            self.write(text)
 
     def child(self, node):
         if self.writer.pre_node:
@@ -85,27 +87,27 @@ class DefaultNW(NodeWriter):
             if child.name not in ['#text', '#entity']:
                 return True
         for child in node.child:
-            self.wrap(re.sub(RE, ' ', child.data))
-        self.wrap('</%s>' % node.name)
+            self.write(re.sub(RE, ' ', child.data))
+        if not isinstance(node, core.Void):
+            self.write('</%s>' % node.name)
         if node.name in BLOCK:
-            self.wrap('\n')
+            self.writer.endl(False)
 
     def end(self, node):
         if node.name == 'pre':
             self.writer.pre_node -= 1
-        if self.writer.pre_node:
-            raw = True
-        else:
-            raw = False
+            if self.writer.pre_node == 0:
+                self.writer.disable_raw()
+        raw = self.writer.pre_node
         if node.child is None:
             if isinstance(node, core.ProcessingInstruction):
-                self.wrap('?>')
+                self.write('?>')
             elif isinstance(node, core.RawText):
-                self.wrap('</%s>' % node.name)
+                self.write('</%s>' % node.name)
             if not raw:
-                self.writer.endl()
+                self.writer.endl(False)
         else:
-            self.wrap('</%s>' % node.name, raw=raw)
+            self.write('</%s>' % node.name, )
             if not raw and node.name in BLOCK:
                 self.writer.endl(False)
 
@@ -114,29 +116,34 @@ class DoctypeNW(NodeWriter):
     """Writes the doctype node: `<!DOCTYPE ...>`. """
 
     def start(self, node):
-        self.wrap('<!DOCTYPE ')
+        self.write('<!DOCTYPE ')
 
     def data(self, node):
-        self.wrap(re.sub(RE, ' ', node.data).strip())
+        self.write(re.sub(RE, ' ', node.data).strip())
 
     def end(self, node):
-        self.wrap('>\n', raw=True)
+        self.write('>\n')
 
 
 class CDataNW(NodeWriter):
     """Writes the CDATA node. """
 
     def start(self, node):
-        self.wrap('<![CDATA[', split=True)
+        self.write('<![CDATA[', split=True)
 
     def data(self, node):
+        enabled = self.writer.raw_enabled()
+        if not enabled:
+            self.writer.enable_raw()
         data = node.data.split(']]>')
         for index in xrange(len(data)-1):
-            self.wrap(data[index] + ']]]]><![CDATA[>', raw=True)
-        self.wrap(data[-1], raw=True)
+            self.write(data[index] + ']]]]><![CDATA[>')
+        self.write(data[-1])
+        if not enabled:
+            self.writer.disable_raw()
 
     def end(self, node):
-        self.wrap(']]>')
+        self.write(']]>')
 
 
 class CommentNW(NodeWriter):
@@ -151,13 +158,13 @@ class CommentNW(NodeWriter):
                     line = node.prev.data[index+1:]
                     if line.strip() == '':
                         self.writer.endl(False)
-        self.wrap('<!--', split=True)
+        self.write('<!--', split=True)
 
     def data(self, node):
-        self.wrap(node.data, raw=True)
+        self.write(node.data)
 
     def end(self, node):
-        self.wrap('-->')
+        self.write('-->')
         if node.next is not None:
             nnext = node.next
             if nnext.name == '#text' and nnext.data.startswith('\n'):

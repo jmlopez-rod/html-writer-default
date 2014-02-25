@@ -9,7 +9,7 @@ line character after the first word that goes beyond a given width
 from lexor import init, load_aux
 
 INFO = init(
-    version=(0, 0, 1, 'final', 3),
+    version=(0, 0, 1, 'final', 4),
     lang='html',
     type='writer',
     description='Writes HTML files without indentation.',
@@ -38,6 +38,8 @@ MAPPING = {
 
 def pre_process(writer, _):
     """Sets the default width for the writer. """
+    writer.disable_raw()
+    writer.enable_wrap()
     writer.width = int(writer.defaults['width'])
     writer.pre_node = 0
     for name in writer.defaults['add_block'].split(','):
