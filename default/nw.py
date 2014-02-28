@@ -107,7 +107,7 @@ class DefaultNW(NodeWriter):
             if not raw:
                 self.writer.endl(False)
         else:
-            self.write('</%s>' % node.name, )
+            self.write('</%s>' % node.name)
             if not raw and node.name in BLOCK:
                 self.writer.endl(False)
 
@@ -149,6 +149,7 @@ class CDataNW(NodeWriter):
 class CommentNW(NodeWriter):
     """Comment can also follow the tree structure. They have to be
     formatted to reflect this. """
+    raw_enabled = None
 
     def start(self, node):
         if node.prev is not None:
@@ -158,13 +159,15 @@ class CommentNW(NodeWriter):
                     line = node.prev.data[index+1:]
                     if line.strip() == '':
                         self.writer.endl(False)
-        self.write('<!--', split=True)
-
-    def data(self, node):
-        self.write(node.data)
+        self.raw_enabled = self.writer.raw_enabled()
+        if not self.raw_enabled:
+            self.writer.enable_raw()
+        self.write('<!--')
 
     def end(self, node):
         self.write('-->')
+        if not self.raw_enabled:
+            self.writer.disable_raw()
         if node.next is not None:
             nnext = node.next
             if nnext.name == '#text' and nnext.data.startswith('\n'):
