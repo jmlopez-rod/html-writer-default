@@ -90,8 +90,8 @@ class DefaultNW(NodeWriter):
         for child in node.child:
             if child.name not in ['#text', '#entity']:
                 return True
-        for child in node.child:
-            self.write(re.sub(RE, ' ', child.data))
+        data = ''.join([child.data for child in node.child])
+        self.write(re.sub(RE, ' ', data))
         if not isinstance(node, core.Void):
             self.write('</%s>' % node.name)
         if node.name in BLOCK:
