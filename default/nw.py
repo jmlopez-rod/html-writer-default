@@ -33,11 +33,15 @@ class TextNW(NodeWriter):
             self.write(node.data)
             return
         text = re.sub(RE, ' ', node.data)
-        if text != ' ' or (node.index != 0 and
-                           node.prev.name not in BLOCK and
-                           node.next is not None and
-                           node.next.name not in BLOCK):
+        if text != ' ':
             self.write(text)
+        else:
+            char = self.writer.last()[-1]
+            if char not in ' \n' and (node.index != 0 and
+                                      node.prev.name not in BLOCK and
+                                      node.next is not None and
+                                      node.next.name not in BLOCK):
+                self.write(text)
 
 
 class DefaultNW(NodeWriter):
@@ -104,7 +108,7 @@ class DefaultNW(NodeWriter):
                 self.write('?>')
             elif isinstance(node, core.RawText):
                 self.write('</%s>' % node.name)
-            if not raw:
+            if not raw and node.name not in ['img']:
                 self.writer.endl(False)
         else:
             self.write('</%s>' % node.name)
@@ -179,3 +183,26 @@ class DocumentNW(NodeWriter):
 
     def end(self, node):
         self.writer.endl(False)
+
+
+class ScriptNW(NodeWriter):
+    """Handles some special types of scripts. """
+
+    def start(self, node):
+        if 'math/tex' in node['type']:
+            self.write('<%s' % node.name)
+            att = ' '.join(['%s="%s"' % (k, v) for k, v in node.items()])
+            if att != '':
+                self.write(' %s' % att)
+            self.write('>')
+        else:
+            self.writer['__default__'].start(node)
+
+    def data(self, node):
+        self.writer['__default__'].data(node)
+
+    def end(self, node):
+        if 'math/tex' in node['type']:
+            self.write('</%s>' % node.name)
+        else:
+            self.writer['__default__'].end(node)

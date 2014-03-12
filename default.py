@@ -9,7 +9,7 @@ line character after the first word that goes beyond a given width
 from lexor import init, load_aux
 
 INFO = init(
-    version=(0, 0, 1, 'final', 6),
+    version=(0, 0, 1, 'final', 7),
     lang='html',
     type='writer',
     description='Writes HTML files without indentation.',
@@ -26,6 +26,7 @@ DEFAULTS = {
 }
 MOD = load_aux(INFO)['nw']
 MAPPING = {
+    'script': MOD.ScriptNW,
     '#document': MOD.DocumentNW,
     '#text': MOD.TextNW,
     '#entity': '#text',
