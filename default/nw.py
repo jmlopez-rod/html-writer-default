@@ -189,7 +189,7 @@ class ScriptNW(NodeWriter):
     """Handles some special types of scripts. """
 
     def start(self, node):
-        if 'math/tex' in node['type']:
+        if 'type' in node and 'math/tex' in node['type']:
             self.write('<%s' % node.name)
             att = ' '.join(['%s="%s"' % (k, v) for k, v in node.items()])
             if att != '':
@@ -202,7 +202,7 @@ class ScriptNW(NodeWriter):
         self.writer['__default__'].data(node)
 
     def end(self, node):
-        if 'math/tex' in node['type']:
+        if 'type' in node and 'math/tex' in node['type']:
             self.write('</%s>' % node.name)
         else:
             self.writer['__default__'].end(node)
