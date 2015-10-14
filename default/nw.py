@@ -57,9 +57,7 @@ class DefaultNW(NodeWriter):
             self.writer.endl(False)
         if isinstance(node, core.ProcessingInstruction):
             self.write('<%s' % node.name, split=True)
-            if '\n' in node.data:
-                self.write('\n')
-            else:
+            if not node.data.startswith('\n'):
                 self.write(' ')
             return
         att = ' '.join(['%s="%s"' % (k, v) for k, v in node.items()])

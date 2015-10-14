@@ -9,13 +9,21 @@ line character after the first word that goes beyond a given width
 from lexor import init, load_aux
 
 INFO = init(
-    version=(0, 0, 2, 'final', 0),
+    version=(0, 0, 3, 'final', 0),
     lang='html',
     type='writer',
     description='Writes HTML files without indentation.',
-    url='http://jmlopez-rod.github.io/lexor-lang/html-writer-default',
-    author='Manuel Lopez',
-    author_email='jmlopez.rod@gmail.com',
+    git={
+        'host': 'github',
+        'user': 'jmlopez-rod',
+        'repo': 'html-writer-default'
+    },
+    author={
+        'name': 'Manuel Lopez',
+        'email': 'jmlopez.rod@gmail.com'
+    },
+    docs='http://jmlopez-rod.github.io/'
+         'lexor-lang/html-writer-default',
     license='BSD License',
     path=__file__
 )
